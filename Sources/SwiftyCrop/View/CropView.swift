@@ -24,8 +24,7 @@ struct CropView: View {
             wrappedValue: CropViewModel(
                 maskRadius: configuration.maskRadius,
                 maxMagnificationScale: configuration.maxMagnificationScale,
-                aspectRatio: aspectRatio,
-                rectAspectRatio: configuration.rectAspectRatio
+                aspectRatio: aspectRatio
             )
         )
         localizableTableName = "Localizable"

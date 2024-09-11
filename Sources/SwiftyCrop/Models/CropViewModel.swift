@@ -5,7 +5,6 @@ public class CropViewModel: ObservableObject {
     private let maskRadius: CGFloat
     private let maxMagnificationScale: CGFloat // The maximum allowed scale factor for image magnification.
     private let aspectRatio: AspectRatio // The shape of the mask used for cropping.
-    private let rectAspectRatio: CGFloat // The aspect ratio for rectangular masks.
     
     var imageSizeInView: CGSize = .zero // The size of the image as displayed in the view.
     @Published var maskSize: CGSize = .zero // The size of the mask used for cropping. This is updated based on the mask shape and available space.
@@ -19,13 +18,11 @@ public class CropViewModel: ObservableObject {
     public init(
         maskRadius: CGFloat,
         maxMagnificationScale: CGFloat,
-        aspectRatio: AspectRatio,
-        rectAspectRatio: CGFloat
+        aspectRatio: AspectRatio
     ) {
         self.maskRadius = maskRadius
         self.maxMagnificationScale = maxMagnificationScale
         self.aspectRatio = aspectRatio
-        self.rectAspectRatio = rectAspectRatio
     }
     
     /**
@@ -33,20 +30,7 @@ public class CropViewModel: ObservableObject {
      - Parameter size: The size to base the mask size calculations on.
      */
     private func updateMaskSize(for size: CGSize) {
-        switch aspectRatio {
-        case .oneByOne:
-            let dimension = min(size.width, size.height)
-            maskSize = CGSize(width: dimension, height: dimension)
-        case .nineBySixteen, .sixteenByNine, .fourByThree, .threeByFour:
-            let maxWidth = min(size.width, maskRadius * 2)
-            let maxHeight = min(size.height, maskRadius * 2)
-            let aspect = aspectRatio.size.width / aspectRatio.size.height
-            if maxWidth / maxHeight > aspect {
-                maskSize = CGSize(width: maxHeight * aspect, height: maxHeight)
-            } else {
-                maskSize = CGSize(width: maxWidth, height: maxWidth / aspect)
-            }
-        }
+        maskSize = aspectRatio.maskSize(for: size)
     }
     
     /**
@@ -75,25 +59,6 @@ public class CropViewModel: ObservableObject {
     func calculateMagnificationGestureMaxValues() -> (CGFloat, CGFloat) {
         let minScale = max(maskSize.width / imageSizeInView.width, maskSize.height / imageSizeInView.height)
         return (minScale, maxMagnificationScale)
-    }
-    
-    /**
-     Crops the given image to a rectangle based on the current mask size and position.
-     - Parameter image: The UIImage to crop.
-     - Returns: A cropped UIImage, or nil if cropping fails.
-     */
-    func cropToRectangle(_ image: UIImage) -> UIImage? {
-        guard let orientedImage = image.correctlyOriented else { return nil }
-        
-        let cropRect = calculateCropRect(orientedImage)
-        
-        guard let cgImage = orientedImage.cgImage,
-              let result = cgImage.cropping(to: cropRect)
-        else {
-            return nil
-        }
-        
-        return UIImage(cgImage: result)
     }
     
     /**
@@ -147,35 +112,6 @@ public class CropViewModel: ObservableObject {
         }
         
         return UIImage(cgImage: result)
-    }
-    
-    /**
-     Crops the given image to a circle based on the current mask size and position.
-     - Parameter image: The UIImage to crop.
-     - Returns: A cropped UIImage, or nil if cropping fails.
-     */
-    func cropToCircle(_ image: UIImage) -> UIImage? {
-        guard let orientedImage = image.correctlyOriented else { return nil }
-        
-        let cropRect = calculateCropRect(orientedImage)
-        
-        let imageRendererFormat = orientedImage.imageRendererFormat
-        imageRendererFormat.opaque = false
-        
-        let circleCroppedImage = UIGraphicsImageRenderer(
-            size: cropRect.size,
-            format: imageRendererFormat
-        ).image { _ in
-            let drawRect = CGRect(origin: .zero, size: cropRect.size)
-            UIBezierPath(ovalIn: drawRect).addClip()
-            let drawImageRect = CGRect(
-                origin: CGPoint(x: -cropRect.origin.x, y: -cropRect.origin.y),
-                size: orientedImage.size
-            )
-            orientedImage.draw(in: drawImageRect)
-        }
-        
-        return circleCroppedImage
     }
     
     /**

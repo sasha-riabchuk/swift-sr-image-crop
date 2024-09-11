@@ -7,7 +7,6 @@ public struct SwiftyCropConfiguration {
     public let cropImageCircular: Bool
     public let rotateImage: Bool
     public let zoomSensitivity: CGFloat
-    public let rectAspectRatio: CGFloat
 
     /// Creates a new instance of `SwiftyCropConfiguration`.
     ///
@@ -28,14 +27,12 @@ public struct SwiftyCropConfiguration {
         maskRadius: CGFloat = 130,
         cropImageCircular: Bool = false,
         rotateImage: Bool = false,
-        zoomSensitivity: CGFloat = 1,
-        rectAspectRatio: CGFloat = 4/3
+        zoomSensitivity: CGFloat = 1
     ) {
         self.maxMagnificationScale = maxMagnificationScale
         self.maskRadius = maskRadius
         self.cropImageCircular = cropImageCircular
         self.rotateImage = rotateImage
         self.zoomSensitivity = zoomSensitivity
-        self.rectAspectRatio = rectAspectRatio
     }
 }
