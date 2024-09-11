@@ -13,17 +13,20 @@ import SwiftUI
 public struct SwiftyCropView: View {
     private let imageToCrop: UIImage
     private let aspectRatio: AspectRatio
+    private let allowedAspectRatio: [AspectRatio]
     private let configuration: SwiftyCropConfiguration
     private let onComplete: (UIImage?) -> Void
 
     public init(
         imageToCrop: UIImage,
         aspectRatio: AspectRatio,
+        allowedAspectRatio: [AspectRatio] = AspectRatio.allCases,
         configuration: SwiftyCropConfiguration = SwiftyCropConfiguration(),
         onComplete: @escaping (UIImage?) -> Void
     ) {
         self.imageToCrop = imageToCrop
         self.aspectRatio = aspectRatio
+        self.allowedAspectRatio = allowedAspectRatio
         self.configuration = configuration
         self.onComplete = onComplete
     }
@@ -32,6 +35,7 @@ public struct SwiftyCropView: View {
         CropView(
             image: imageToCrop,
             aspectRatio: aspectRatio,
+            allowedAspectRatio: allowedAspectRatio,
             configuration: configuration,
             onComplete: onComplete
         )

@@ -12,6 +12,21 @@ public enum AspectRatio: CaseIterable {
         case .sixteenByNine: return CGSize(width: 16, height: 9)
         }
     }
+    
+    public var title: String {
+        switch self {
+        case .nineBySixteen:
+            "9:16"
+        case .oneByOne:
+            "1:1"
+        case .fourByThree:
+            "4:3"
+        case .threeByFour:
+            "3:4"
+        case .sixteenByNine:
+            "16:9"
+        }
+    }
 
     public func maskSize(for size: CGSize) -> CGSize {
         let aspect = self.size.width / self.size.height

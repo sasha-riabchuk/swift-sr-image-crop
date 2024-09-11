@@ -2,6 +2,9 @@ import SwiftUI
 import UIKit
 
 public class CropViewModel: ObservableObject {
+    
+    @Published var isDragging: Bool = false
+    
     private let maxMagnificationScale: CGFloat // The maximum allowed scale factor for image magnification.
     @Published var aspectRatio: AspectRatio // The shape of the mask used for cropping.
     

@@ -1,22 +1,25 @@
 import SwiftUI
 
-struct CropView: View {
+public struct CropView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: CropViewModel
     
     private let image: UIImage
     private let configuration: SwiftyCropConfiguration
+    private let allowedAspectRatio: [AspectRatio]
     private let onComplete: (UIImage?) -> Void
     private let localizableTableName: String
     
-    init(
+    public init(
         image: UIImage,
         aspectRatio: AspectRatio,
+        allowedAspectRatio: [AspectRatio],
         configuration: SwiftyCropConfiguration,
         onComplete: @escaping (UIImage?) -> Void
     ) {
         self.image = image
         self.configuration = configuration
+        self.allowedAspectRatio = allowedAspectRatio
         self.onComplete = onComplete
         _viewModel = StateObject(
             wrappedValue: CropViewModel(
@@ -27,7 +30,7 @@ struct CropView: View {
         localizableTableName = "Localizable"
     }
     
-    var body: some View {
+    public var body: some View {
         let magnificationGesture = MagnificationGesture()
             .onChanged { value in
                 let sensitivity: CGFloat = 0.1 * configuration.zoomSensitivity
@@ -45,6 +48,7 @@ struct CropView: View {
         
         let dragGesture = DragGesture()
             .onChanged { value in
+                viewModel.isDragging = true
                 let maxOffsetPoint = viewModel.calculateDragGestureMax()
                 let newX = min(
                     max(value.translation.width + viewModel.lastOffset.width, -maxOffsetPoint.x),
@@ -58,6 +62,7 @@ struct CropView: View {
             }
             .onEnded { _ in
                 viewModel.lastOffset = viewModel.offset
+                viewModel.isDragging = false
             }
         
         let rotationGesture = RotationGesture()
@@ -88,34 +93,35 @@ struct CropView: View {
                                 })
                         }
                     )
-                
+               
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .rotationEffect(viewModel.angle)
                     .scaleEffect(viewModel.scale)
                     .offset(viewModel.offset)
-                    .mask(
-                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
-                            .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
-                    )
+//                    .mask(
+//                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
+//                            .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
+//                    )
                     .overlay {
                         MaskShapeView(aspectRatio: viewModel.aspectRatio)
                             .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
                     }
-                
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .simultaneousGesture(magnificationGesture)
             .simultaneousGesture(dragGesture)
             .simultaneousGesture(configuration.rotateImage ? rotationGesture : nil)
-            .animation(.easeIn, value: viewModel.aspectRatio)
+            .animation(.default, value: viewModel.aspectRatio)
+            .animation(.default, value: viewModel.offset)
 
             CroppingControllPanel(
                 onComplete: onComplete,
                 image: image,
                 configuration: configuration,
                 localizableTableName: localizableTableName,
+                allowedAspectRatio: allowedAspectRatio,
                 viewModel: viewModel,
                 aspectRatio: $viewModel.aspectRatio
             )
@@ -133,16 +139,14 @@ struct CropView: View {
     private struct MaskShapeView: View {
         let aspectRatio: AspectRatio
         let lineWidth: CGFloat = 1.0
-        let gridColor: Color = .green // Grid line color
-        let borderColor: Color = .green // Border color for the mask
-        let borderThickness: CGFloat = 2.0 // Thickness for the border
+        let gridColor: Color = .white.opacity(0.5)
+        let borderColor: Color = .white
+        let borderThickness: CGFloat = 2.0
 
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
-                    // Main rectangle to act as the mask with border
                     Rectangle()
-                        .fill(.green.opacity(0.1))
                         .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
                         .foregroundColor(.clear) // The mask area is transparent
                         .border(borderColor, width: borderThickness) // Add border to the mask
@@ -166,7 +170,6 @@ struct CropView: View {
                         }
                     }
                     .stroke(gridColor, lineWidth: lineWidth) // Style grid lines
-                    
                 }
                 .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
             }
@@ -177,6 +180,7 @@ struct CropView: View {
 #Preview {
     CropView(image: .init(systemName: "person")!,
              aspectRatio: .fourByThree,
+             allowedAspectRatio: [.fourByThree, .nineBySixteen],
              configuration: .init())
     { _ in
         debugPrint("Image was cropped")
@@ -188,15 +192,25 @@ public struct CroppingControllPanel: View {
     private let onComplete: (UIImage?) -> Void
     private let image: UIImage
     private let localizableTableName: String
+    private let allowedAspectRatio: [AspectRatio]
     private let configuration: SwiftyCropConfiguration
     private var viewModel: CropViewModel
     
     @Binding private var aspectRatio: AspectRatio
     
-    public init(onComplete: @escaping (UIImage?) -> Void, image: UIImage, configuration: SwiftyCropConfiguration, localizableTableName: String, viewModel: CropViewModel, aspectRatio: Binding<AspectRatio>) {
+    public init(
+        onComplete: @escaping (UIImage?) -> Void,
+        image: UIImage,
+        configuration: SwiftyCropConfiguration,
+        localizableTableName: String,
+        allowedAspectRatio: [AspectRatio],
+        viewModel: CropViewModel,
+        aspectRatio: Binding<AspectRatio>
+    ) {
         self.onComplete = onComplete
         self.image = image
         self.localizableTableName = localizableTableName
+        self.allowedAspectRatio = allowedAspectRatio
         self.configuration = configuration
         self.viewModel = viewModel
         _aspectRatio = aspectRatio
@@ -205,12 +219,25 @@ public struct CroppingControllPanel: View {
     public var body: some View {
         VStack {
             HStack {
-                ForEach(AspectRatio.allCases, id: \.hashValue) { ratio in
-                    Text("\(ratio.size)")
-                        .onTapGesture {
-                            self.aspectRatio = ratio
-                        }
-                        .foregroundColor(aspectRatio == ratio ? .red : .white)
+                ForEach(allowedAspectRatio, id: \.hashValue) { ratio in
+                    VStack {
+                        Rectangle()
+                            .aspectRatio(ratio.size.width / ratio.size.height, contentMode: .fit)
+                            .frame(width: 40, height: 30) // Fixed representation size within the button
+
+                        Text(ratio.title)
+                            .fontWeight(.bold)
+                            .font(.caption) // Adjust font size if needed
+                    }
+                    .frame(width: 50, height: 50) // Fixed button size
+                    .padding(10)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(aspectRatio == ratio ? Color.red : configuration.ratioButtonInnerColor, lineWidth: 2)
+                    }
+                    .onTapGesture {
+                        self.aspectRatio = ratio
+                    }
                 }
             }
             HStack {
@@ -222,11 +249,11 @@ public struct CroppingControllPanel: View {
                         .scaledToFit()
                         .frame(width: 15, height: 15)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(configuration.cancelButtonColor)
                         .frame(width: 40, height: 40)
                         .background {
                             Circle()
-                                .fill(.gray)
+                                .fill(configuration.ratioButtonBackground)
                         }
                 }
                 
@@ -243,7 +270,7 @@ public struct CroppingControllPanel: View {
                         .frame(width: 40, height: 40)
                         .background {
                             Circle()
-                                .fill(.green)
+                                .fill(configuration.doneButtonColor)
                         }
                 }
                 .foregroundColor(.white)
@@ -251,7 +278,7 @@ public struct CroppingControllPanel: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .bottom)
-        .background(.brown)
+        .background(configuration.panelBackgroundColor)
     }
     
     private func cropImage() -> UIImage? {
