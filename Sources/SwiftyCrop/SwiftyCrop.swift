@@ -12,18 +12,18 @@ import SwiftUI
 ///     If an error occurs the return value is nil.
 public struct SwiftyCropView: View {
     private let imageToCrop: UIImage
-    private let maskShape: MaskShape
+    private let aspectRatio: AspectRatio
     private let configuration: SwiftyCropConfiguration
     private let onComplete: (UIImage?) -> Void
 
     public init(
         imageToCrop: UIImage,
-        maskShape: MaskShape,
+        aspectRatio: AspectRatio,
         configuration: SwiftyCropConfiguration = SwiftyCropConfiguration(),
         onComplete: @escaping (UIImage?) -> Void
     ) {
         self.imageToCrop = imageToCrop
-        self.maskShape = maskShape
+        self.aspectRatio = aspectRatio
         self.configuration = configuration
         self.onComplete = onComplete
     }
@@ -31,7 +31,7 @@ public struct SwiftyCropView: View {
     public var body: some View {
         CropView(
             image: imageToCrop,
-            maskShape: maskShape,
+            aspectRatio: aspectRatio,
             configuration: configuration,
             onComplete: onComplete
         )

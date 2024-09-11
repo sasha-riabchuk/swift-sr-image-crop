@@ -1,10 +1,10 @@
 import SwiftUI
 import UIKit
 
-class CropViewModel: ObservableObject {
+public class CropViewModel: ObservableObject {
     private let maskRadius: CGFloat
     private let maxMagnificationScale: CGFloat // The maximum allowed scale factor for image magnification.
-    private let maskShape: MaskShape // The shape of the mask used for cropping.
+    private let aspectRatio: AspectRatio // The shape of the mask used for cropping.
     private let rectAspectRatio: CGFloat // The aspect ratio for rectangular masks.
     
     var imageSizeInView: CGSize = .zero // The size of the image as displayed in the view.
@@ -13,18 +13,18 @@ class CropViewModel: ObservableObject {
     @Published var lastScale: CGFloat = 1.0 // The previous scale factor of the image.
     @Published var offset: CGSize = .zero // The current offset of the image.
     @Published var lastOffset: CGSize = .zero // The previous offset of the image.
-    @Published var angle: Angle = Angle(degrees: 0) // The current rotation angle of the image.
-    @Published var lastAngle: Angle = Angle(degrees: 0) // The previous rotation angle of the image.
+    @Published var angle: Angle = .init(degrees: 0) // The current rotation angle of the image.
+    @Published var lastAngle: Angle = .init(degrees: 0) // The previous rotation angle of the image.
     
-    init(
+    public init(
         maskRadius: CGFloat,
         maxMagnificationScale: CGFloat,
-        maskShape: MaskShape,
+        aspectRatio: AspectRatio,
         rectAspectRatio: CGFloat
     ) {
         self.maskRadius = maskRadius
         self.maxMagnificationScale = maxMagnificationScale
-        self.maskShape = maskShape
+        self.aspectRatio = aspectRatio
         self.rectAspectRatio = rectAspectRatio
     }
     
@@ -33,17 +33,18 @@ class CropViewModel: ObservableObject {
      - Parameter size: The size to base the mask size calculations on.
      */
     private func updateMaskSize(for size: CGSize) {
-        switch maskShape {
-        case .circle, .square:
-            let diameter = min(maskRadius * 2, min(size.width, size.height))
-            maskSize = CGSize(width: diameter, height: diameter)
-        case .rectangle:
+        switch aspectRatio {
+        case .oneByOne:
+            let dimension = min(size.width, size.height)
+            maskSize = CGSize(width: dimension, height: dimension)
+        case .nineBySixteen, .sixteenByNine, .fourByThree, .threeByFour:
             let maxWidth = min(size.width, maskRadius * 2)
             let maxHeight = min(size.height, maskRadius * 2)
-            if maxWidth / maxHeight > rectAspectRatio {
-                maskSize = CGSize(width: maxHeight * rectAspectRatio, height: maxHeight)
+            let aspect = aspectRatio.size.width / aspectRatio.size.height
+            if maxWidth / maxHeight > aspect {
+                maskSize = CGSize(width: maxHeight * aspect, height: maxHeight)
             } else {
-                maskSize = CGSize(width: maxWidth, height: maxWidth / rectAspectRatio)
+                maskSize = CGSize(width: maxWidth, height: maxWidth / aspect)
             }
         }
     }
@@ -87,7 +88,8 @@ class CropViewModel: ObservableObject {
         let cropRect = calculateCropRect(orientedImage)
         
         guard let cgImage = orientedImage.cgImage,
-              let result = cgImage.cropping(to: cropRect) else {
+              let result = cgImage.cropping(to: cropRect)
+        else {
             return nil
         }
         
@@ -105,7 +107,42 @@ class CropViewModel: ObservableObject {
         let cropRect = calculateCropRect(orientedImage)
         
         guard let cgImage = orientedImage.cgImage,
-              let result = cgImage.cropping(to: cropRect) else {
+              let result = cgImage.cropping(to: cropRect)
+        else {
+            return nil
+        }
+        
+        return UIImage(cgImage: result)
+    }
+    
+    /**
+     Crops the given image to a specific aspect ratio based on the current mask size and position.
+     - Parameters:
+       - image: The UIImage to crop.
+       - aspectRatio: The desired aspect ratio (CGSize) for cropping.
+     - Returns: A cropped UIImage, or nil if cropping fails.
+     */
+    func cropToAspectRatio(_ image: UIImage, aspectRatio: CGSize) -> UIImage? {
+        guard let orientedImage = image.correctlyOriented else { return nil }
+        
+        let imageAspectRatio = orientedImage.size.width / orientedImage.size.height
+        let targetAspectRatio = aspectRatio.width / aspectRatio.height
+        
+        var cropRect: CGRect
+        
+        if imageAspectRatio > targetAspectRatio {
+            let newWidth = orientedImage.size.height * targetAspectRatio
+            let xOffset = (orientedImage.size.width - newWidth) / 2
+            cropRect = CGRect(x: xOffset, y: 0, width: newWidth, height: orientedImage.size.height)
+        } else {
+            let newHeight = orientedImage.size.width / targetAspectRatio
+            let yOffset = (orientedImage.size.height - newHeight) / 2
+            cropRect = CGRect(x: 0, y: yOffset, width: orientedImage.size.width, height: newHeight)
+        }
+        
+        guard let cgImage = orientedImage.cgImage,
+              let result = cgImage.cropping(to: cropRect)
+        else {
             return nil
         }
         
@@ -127,15 +164,16 @@ class CropViewModel: ObservableObject {
         
         let circleCroppedImage = UIGraphicsImageRenderer(
             size: cropRect.size,
-            format: imageRendererFormat).image { _ in
-                let drawRect = CGRect(origin: .zero, size: cropRect.size)
-                UIBezierPath(ovalIn: drawRect).addClip()
-                let drawImageRect = CGRect(
-                    origin: CGPoint(x: -cropRect.origin.x, y: -cropRect.origin.y),
-                    size: orientedImage.size
-                )
-                orientedImage.draw(in: drawImageRect)
-            }
+            format: imageRendererFormat
+        ).image { _ in
+            let drawRect = CGRect(origin: .zero, size: cropRect.size)
+            UIBezierPath(ovalIn: drawRect).addClip()
+            let drawImageRect = CGRect(
+                origin: CGPoint(x: -cropRect.origin.x, y: -cropRect.origin.y),
+                size: orientedImage.size
+            )
+            orientedImage.draw(in: drawImageRect)
+        }
         
         return circleCroppedImage
     }
@@ -168,8 +206,8 @@ class CropViewModel: ObservableObject {
      */
     private func calculateCropRect(_ orientedImage: UIImage) -> CGRect {
         let factor = min(
-            (orientedImage.size.width / imageSizeInView.width),
-            (orientedImage.size.height / imageSizeInView.height)
+            orientedImage.size.width / imageSizeInView.width,
+            orientedImage.size.height / imageSizeInView.height
         )
         let centerInOriginalImage = CGPoint(
             x: orientedImage.size.width / 2,
