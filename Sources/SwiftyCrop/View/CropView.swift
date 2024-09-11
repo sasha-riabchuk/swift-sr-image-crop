@@ -5,7 +5,6 @@ struct CropView: View {
     @StateObject private var viewModel: CropViewModel
     
     private let image: UIImage
-    @State private var aspectRatio: AspectRatio
     private let configuration: SwiftyCropConfiguration
     private let onComplete: (UIImage?) -> Void
     private let localizableTableName: String
@@ -17,12 +16,10 @@ struct CropView: View {
         onComplete: @escaping (UIImage?) -> Void
     ) {
         self.image = image
-        self.aspectRatio = aspectRatio
         self.configuration = configuration
         self.onComplete = onComplete
         _viewModel = StateObject(
             wrappedValue: CropViewModel(
-                maskRadius: configuration.maskRadius,
                 maxMagnificationScale: configuration.maxMagnificationScale,
                 aspectRatio: aspectRatio
             )
@@ -86,6 +83,9 @@ struct CropView: View {
                                 .onAppear {
                                     viewModel.updateMaskDimensions(for: geometry.size)
                                 }
+                                .onChange(of: viewModel.aspectRatio, perform: { _ in
+                                    viewModel.updateMaskDimensions(for: geometry.size)
+                                })
                         }
                     )
                 
@@ -96,25 +96,30 @@ struct CropView: View {
                     .scaleEffect(viewModel.scale)
                     .offset(viewModel.offset)
                     .mask(
-                        MaskShapeView(aspectRatio: aspectRatio)
+                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
                             .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
                     )
+                    .overlay {
+                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
+                            .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
+                    }
+                
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .simultaneousGesture(magnificationGesture)
             .simultaneousGesture(dragGesture)
             .simultaneousGesture(configuration.rotateImage ? rotationGesture : nil)
-            
+            .animation(.easeIn, value: viewModel.aspectRatio)
+
             CroppingControllPanel(
                 onComplete: onComplete,
                 image: image,
                 configuration: configuration,
                 localizableTableName: localizableTableName,
                 viewModel: viewModel,
-                aspectRatio: $aspectRatio
+                aspectRatio: $viewModel.aspectRatio
             )
         }
-        .background(.black)
     }
     
     private func updateOffset() {
@@ -127,17 +132,43 @@ struct CropView: View {
     
     private struct MaskShapeView: View {
         let aspectRatio: AspectRatio
-        
+        let lineWidth: CGFloat = 1.0
+        let gridColor: Color = .green // Grid line color
+        let borderColor: Color = .green // Border color for the mask
+        let borderThickness: CGFloat = 2.0 // Thickness for the border
+
         var body: some View {
-            Group {
-                switch aspectRatio {
-                case .oneByOne:
+            GeometryReader { geometry in
+                ZStack {
+                    // Main rectangle to act as the mask with border
                     Rectangle()
-                        .aspectRatio(1, contentMode: .fit)
-                case .nineBySixteen, .sixteenByNine, .fourByThree, .threeByFour:
-                    Rectangle()
+                        .fill(.green.opacity(0.1))
                         .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
+                        .foregroundColor(.clear) // The mask area is transparent
+                        .border(borderColor, width: borderThickness) // Add border to the mask
+                    // Add a grid on top of the transparent rectangle
+                    Path { path in
+                        let width = geometry.size.width
+                        let height = geometry.size.height
+
+                        // Vertical grid lines
+                        for i in 1..<3 {
+                            let xPos = width / 3 * CGFloat(i)
+                            path.move(to: CGPoint(x: xPos, y: 0))
+                            path.addLine(to: CGPoint(x: xPos, y: height))
+                        }
+
+                        // Horizontal grid lines
+                        for i in 1..<3 {
+                            let yPos = height / 3 * CGFloat(i)
+                            path.move(to: CGPoint(x: 0, y: yPos))
+                            path.addLine(to: CGPoint(x: width, y: yPos))
+                        }
+                    }
+                    .stroke(gridColor, lineWidth: lineWidth) // Style grid lines
+                    
                 }
+                .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
             }
         }
     }
@@ -238,7 +269,7 @@ public struct CroppingControllPanel: View {
         case .oneByOne:
             return viewModel.cropToSquare(editedImage)
         case .nineBySixteen, .sixteenByNine, .fourByThree, .threeByFour:
-            return viewModel.cropToAspectRatio(editedImage, aspectRatio: aspectRatio.size)
+            return viewModel.cropToAspectRatio(editedImage, aspectRatio: aspectRatio)
         }
     }
 }

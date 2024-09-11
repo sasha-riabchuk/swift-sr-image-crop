@@ -2,9 +2,8 @@ import SwiftUI
 import UIKit
 
 public class CropViewModel: ObservableObject {
-    private let maskRadius: CGFloat
     private let maxMagnificationScale: CGFloat // The maximum allowed scale factor for image magnification.
-    private let aspectRatio: AspectRatio // The shape of the mask used for cropping.
+    @Published var aspectRatio: AspectRatio // The shape of the mask used for cropping.
     
     var imageSizeInView: CGSize = .zero // The size of the image as displayed in the view.
     @Published var maskSize: CGSize = .zero // The size of the mask used for cropping. This is updated based on the mask shape and available space.
@@ -16,11 +15,9 @@ public class CropViewModel: ObservableObject {
     @Published var lastAngle: Angle = .init(degrees: 0) // The previous rotation angle of the image.
     
     public init(
-        maskRadius: CGFloat,
         maxMagnificationScale: CGFloat,
         aspectRatio: AspectRatio
     ) {
-        self.maskRadius = maskRadius
         self.maxMagnificationScale = maxMagnificationScale
         self.aspectRatio = aspectRatio
     }
@@ -84,27 +81,16 @@ public class CropViewModel: ObservableObject {
      Crops the given image to a specific aspect ratio based on the current mask size and position.
      - Parameters:
        - image: The UIImage to crop.
-       - aspectRatio: The desired aspect ratio (CGSize) for cropping.
+       - aspectRatio: The aspect ratio to crop to.
      - Returns: A cropped UIImage, or nil if cropping fails.
      */
-    func cropToAspectRatio(_ image: UIImage, aspectRatio: CGSize) -> UIImage? {
+    func cropToAspectRatio(_ image: UIImage, aspectRatio: AspectRatio) -> UIImage? {
         guard let orientedImage = image.correctlyOriented else { return nil }
         
-        let imageAspectRatio = orientedImage.size.width / orientedImage.size.height
-        let targetAspectRatio = aspectRatio.width / aspectRatio.height
+        // Calculate the crop rect for the given aspect ratio
+        let cropRect = calculateCropRect(orientedImage)
         
-        var cropRect: CGRect
-        
-        if imageAspectRatio > targetAspectRatio {
-            let newWidth = orientedImage.size.height * targetAspectRatio
-            let xOffset = (orientedImage.size.width - newWidth) / 2
-            cropRect = CGRect(x: xOffset, y: 0, width: newWidth, height: orientedImage.size.height)
-        } else {
-            let newHeight = orientedImage.size.width / targetAspectRatio
-            let yOffset = (orientedImage.size.height - newHeight) / 2
-            cropRect = CGRect(x: 0, y: yOffset, width: orientedImage.size.width, height: newHeight)
-        }
-        
+        // Perform the cropping
         guard let cgImage = orientedImage.cgImage,
               let result = cgImage.cropping(to: cropRect)
         else {
