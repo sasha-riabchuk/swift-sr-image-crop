@@ -29,10 +29,10 @@ public struct SwiftyCropConfiguration {
         rotateImage: Bool = false,
         zoomSensitivity: CGFloat = 6,
         panelBackgroundColor: Color = .gray,
-        doneButtonColor: Color = .green,
-        cancelButtonColor: Color = .red,
-        ratioButtonBackground: Color = .cyan,
-        ratioButtonInnerColor: Color = .white
+        doneButtonColor: Color = CustomColor.goldColor,
+        cancelButtonColor: Color = CustomColor.grayCellBackgroundColor,
+        ratioButtonBackground: Color = CustomColor.grayContainerBackgroundColor,
+        ratioButtonInnerColor: Color = CustomColor.blackBackgroundColor
     ) {
         self.maxMagnificationScale = maxMagnificationScale
         self.rotateImage = rotateImage

@@ -93,7 +93,7 @@ public struct CropView: View {
                         }
                     )
                     .overlay {
-                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
+                        MaskShapeView(aspectRatio: $viewModel.aspectRatio)
                             .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
                     }
                     .zIndex(1)
@@ -115,6 +115,7 @@ public struct CropView: View {
                 aspectRatio: $viewModel.aspectRatio
             )
         }
+        .background(CustomColor.blackBackgroundColor)
     }
     
     private func updateOffset() {
@@ -126,20 +127,24 @@ public struct CropView: View {
     }
     
     private struct MaskShapeView: View {
-        let aspectRatio: AspectRatio
+        @Binding var aspectRatio: AspectRatio
         let lineWidth: CGFloat = 1.0
-        let gridColor: Color = .white
+        let gridColor: Color = .white.opacity(0.7)
         let borderColor: Color = .white
-        let borderThickness: CGFloat = 2.0
+        let borderThickness: CGFloat = 1.5
+        @State private var drawProgress: CGFloat = 0.0
 
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
+                    // Mask shape with border
                     Rectangle()
                         .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
-                        .foregroundColor(.clear) // The mask area is transparent
-                        .border(borderColor, width: borderThickness) // Add border to the mask
-                    // Add a grid on top of the transparent rectangle
+                        .foregroundColor(.clear)
+                        .border(borderColor, width: borderThickness)
+                        .animation(.easeInOut(duration: 0.5), value: aspectRatio)
+
+                    // Grid overlay with animated drawing
                     Path { path in
                         let width = geometry.size.width
                         let height = geometry.size.height
@@ -158,7 +163,23 @@ public struct CropView: View {
                             path.addLine(to: CGPoint(x: width, y: yPos))
                         }
                     }
-                    .stroke(gridColor, lineWidth: lineWidth) // Style grid lines
+                    .trim(from: 0, to: drawProgress)
+                    .stroke(gridColor, lineWidth: lineWidth)
+                    .onAppear {
+                        // Initial animation to draw grid when the view appears
+                        withAnimation(.linear(duration: 0.5)) {
+                            drawProgress = 1.0
+                        }
+                    }
+                    .onChange(of: aspectRatio) { _ in
+                        // Re-trigger animation when aspect ratio changes
+                        withAnimation(.linear(duration: 0.5)) {
+                            drawProgress = 0.0 // Reset the drawing
+                        }
+                        withAnimation(.linear(duration: 0.5).delay(0.7)) {
+                            drawProgress = 1.0 // Animate grid drawing again
+                        }
+                    }
                 }
                 .aspectRatio(aspectRatio.size.width / aspectRatio.size.height, contentMode: .fit)
             }
@@ -206,27 +227,32 @@ public struct CroppingControllPanel: View {
     
     public var body: some View {
         VStack {
+            Text("Choose ratio")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(CustomColor.whiteMainColor)
+                .padding(10)
+            
             HStack {
                 ForEach(allowedAspectRatio, id: \.hashValue) { ratio in
                     VStack {
                         Rectangle()
-                            .fill(.white)
+                            .fill(CustomColor.blueColor)
                             .aspectRatio(ratio.size.width / ratio.size.height, contentMode: .fit)
-                            .frame(width: 40, height: 30)
+                            .frame(width: 30, height: 20)
                         Text(ratio.title)
-                            .fontWeight(.bold)
-                            .font(.caption)
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundStyle(.white)
                     }
                     .frame(width: 50, height: 50)
-                    .padding(10)
+                    .padding(8)
                     .background {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(aspectRatio == ratio ? Color.red : configuration.ratioButtonInnerColor, lineWidth: 2)
+                        aspectRatio == ratio ? CustomColor.oceanicMainColor : CustomColor.blackBackgroundColor
                     }
+                    .cornerRadius(12)
                     .onTapGesture {
                         self.aspectRatio = ratio
                     }
+                    .animation(.default, value: aspectRatio)
                 }
             }
             HStack {
@@ -238,11 +264,11 @@ public struct CroppingControllPanel: View {
                         .scaledToFit()
                         .frame(width: 15, height: 15)
                         .fontWeight(.bold)
-                        .foregroundColor(configuration.cancelButtonColor)
+                        .foregroundColor(CustomColor.whiteMainColor)
                         .frame(width: 40, height: 40)
                         .background {
                             Circle()
-                                .fill(configuration.ratioButtonBackground)
+                                .fill(CustomColor.blackBackgroundColor)
                         }
                 }
                 
@@ -257,11 +283,11 @@ public struct CroppingControllPanel: View {
                         .scaledToFit()
                         .frame(width: 15, height: 15)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(CustomColor.whiteMainColor)
                         .frame(width: 40, height: 40)
                         .background {
                             Circle()
-                                .fill(configuration.doneButtonColor)
+                                .fill(CustomColor.goldColor)
                         }
                 }
                 .foregroundColor(.white)
@@ -270,7 +296,7 @@ public struct CroppingControllPanel: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .bottom)
-        .background(configuration.panelBackgroundColor)
+        .background(CustomColor.grayCellBackgroundColor)
     }
     
     private func cropImage() -> UIImage? {
@@ -290,5 +316,60 @@ public struct CroppingControllPanel: View {
         case .nineBySixteen, .sixteenByNine, .fourByThree, .threeByFour:
             return viewModel.cropToAspectRatio(editedImage, aspectRatio: aspectRatio)
         }
+    }
+}
+
+public enum CustomColor {
+    public static var blackBackgroundColor = Color(hex: "17181E")
+    public static var grayCellBackgroundColor = Color(hex: "22252D")
+    public static var grayContainerBackgroundColor = Color(hex: "1A1D22")
+    public static var whiteMainColor = Color(hex: "F8F8FF")
+    public static var oceanicMainColor = Color(hex: "0A7273")
+    public static var redColor = Color(hex: "FF4B59")
+
+    public static var pinkColor = Color(hex: "DD2A7B")
+    public static var purpleColor = Color(hex: "A300FF")
+    public static var lightPurpleColor = Color(hex: "A300FF")
+    public static var greenColor = Color(hex: "00D166")
+    public static var blueColor = Color(hex: "4AB8FF")
+    public static var goldColor = Color(hex: "FDA521")
+    public static var blueSecondaryColor = Color(hex: "2596be")
+
+    public static var successMainColor = Color(hex: "00DF80")
+    public static var successAlertColor = Color(hex: "7DFFC7")
+    public static var warningMainColor = Color(hex: "FFD21F")
+    public static var warningAlertColor = Color(hex: "FDE069")
+    public static var errorMainColor = Color(hex: "F04349")
+    public static var errorAlertColor = Color(hex: "FF8F93")
+
+    public static var facebookColor = Color(hex: "1877F2")
+    public static var instagramColor = Color(hex: "1877F2")
+    public static var telegramColor = Color(hex: "229ED9")
+}
+
+public extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 1, 1, 0)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
