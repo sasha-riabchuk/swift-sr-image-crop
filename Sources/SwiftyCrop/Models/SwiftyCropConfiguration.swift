@@ -6,11 +6,12 @@ public struct SwiftyCropConfiguration {
     public let maxMagnificationScale: CGFloat
     public let rotateImage: Bool
     public let zoomSensitivity: CGFloat
-    public let panelBackgroundColor: Color
-    public let doneButtonColor: Color
-    public let cancelButtonColor: Color
-    public let ratioButtonBackground: Color
-    public let ratioButtonInnerColor: Color
+    public let backgroundColor: Color
+    public let fontColor: Color
+    public let previewRectangleColor: Color
+    public let selectionColor: Color
+    public let primaryColor: Color
+    public let secondaryBackgroundColor: Color
 
     /// Creates a new instance of `SwiftyCropConfiguration`.
     ///
@@ -28,19 +29,21 @@ public struct SwiftyCropConfiguration {
         maxMagnificationScale: CGFloat = 5.0,
         rotateImage: Bool = false,
         zoomSensitivity: CGFloat = 6,
-        panelBackgroundColor: Color = .gray,
-        doneButtonColor: Color = CustomColor.goldColor,
-        cancelButtonColor: Color = CustomColor.grayCellBackgroundColor,
-        ratioButtonBackground: Color = CustomColor.grayContainerBackgroundColor,
-        ratioButtonInnerColor: Color = CustomColor.blackBackgroundColor
+        backgroundColor: Color = .red,
+        fontColor: Color = .white,
+        previewRectangleColor: Color = .blue,
+        selectionColor: Color = .green,
+        primaryColor: Color = .orange,
+        secondaryBackgroundColor: Color = .gray
     ) {
         self.maxMagnificationScale = maxMagnificationScale
         self.rotateImage = rotateImage
         self.zoomSensitivity = zoomSensitivity
-        self.panelBackgroundColor = panelBackgroundColor
-        self.doneButtonColor = doneButtonColor
-        self.cancelButtonColor = cancelButtonColor
-        self.ratioButtonBackground = ratioButtonBackground
-        self.ratioButtonInnerColor = ratioButtonInnerColor
+        self.backgroundColor = backgroundColor
+        self.fontColor = fontColor
+        self.previewRectangleColor = previewRectangleColor
+        self.selectionColor = selectionColor
+        self.primaryColor = primaryColor
+        self.secondaryBackgroundColor = secondaryBackgroundColor
     }
 }
