@@ -13,7 +13,7 @@ public struct CropView: View {
     public init(
         image: UIImage,
         aspectRatio: AspectRatio,
-        allowedAspectRatio: [AspectRatio],
+        allowedAspectRatio: [AspectRatio] = AspectRatio.allCases,
         configuration: SwiftyCropConfiguration,
         onComplete: @escaping (UIImage?) -> Void
     ) {
@@ -81,7 +81,6 @@ public struct CropView: View {
                     .rotationEffect(viewModel.angle)
                     .scaleEffect(viewModel.scale)
                     .offset(viewModel.offset)
-                    .opacity(0.5)
                     .overlay(
                         GeometryReader { geometry in
                             Color.clear
@@ -93,21 +92,11 @@ public struct CropView: View {
                                 })
                         }
                     )
-               
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .rotationEffect(viewModel.angle)
-                    .scaleEffect(viewModel.scale)
-                    .offset(viewModel.offset)
-//                    .mask(
-//                        MaskShapeView(aspectRatio: viewModel.aspectRatio)
-//                            .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
-//                    )
                     .overlay {
                         MaskShapeView(aspectRatio: viewModel.aspectRatio)
                             .frame(width: viewModel.maskSize.width, height: viewModel.maskSize.height)
                     }
+                    .zIndex(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .simultaneousGesture(magnificationGesture)
@@ -139,7 +128,7 @@ public struct CropView: View {
     private struct MaskShapeView: View {
         let aspectRatio: AspectRatio
         let lineWidth: CGFloat = 1.0
-        let gridColor: Color = .white.opacity(0.5)
+        let gridColor: Color = .white
         let borderColor: Color = .white
         let borderThickness: CGFloat = 2.0
 
@@ -180,7 +169,6 @@ public struct CropView: View {
 #Preview {
     CropView(image: .init(systemName: "person")!,
              aspectRatio: .fourByThree,
-             allowedAspectRatio: [.fourByThree, .nineBySixteen],
              configuration: .init())
     { _ in
         debugPrint("Image was cropped")
@@ -222,14 +210,15 @@ public struct CroppingControllPanel: View {
                 ForEach(allowedAspectRatio, id: \.hashValue) { ratio in
                     VStack {
                         Rectangle()
+                            .fill(.white)
                             .aspectRatio(ratio.size.width / ratio.size.height, contentMode: .fit)
-                            .frame(width: 40, height: 30) // Fixed representation size within the button
-
+                            .frame(width: 40, height: 30)
                         Text(ratio.title)
                             .fontWeight(.bold)
-                            .font(.caption) // Adjust font size if needed
+                            .font(.caption)
+                            .foregroundStyle(.white)
                     }
-                    .frame(width: 50, height: 50) // Fixed button size
+                    .frame(width: 50, height: 50)
                     .padding(10)
                     .background {
                         RoundedRectangle(cornerRadius: 8)
@@ -257,6 +246,8 @@ public struct CroppingControllPanel: View {
                         }
                 }
                 
+                Spacer()
+                
                 Button {
                     onComplete(cropImage())
                     dismiss()
@@ -275,8 +266,9 @@ public struct CroppingControllPanel: View {
                 }
                 .foregroundColor(.white)
             }
+            .padding(.horizontal)
         }
-        .padding()
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .bottom)
         .background(configuration.panelBackgroundColor)
     }

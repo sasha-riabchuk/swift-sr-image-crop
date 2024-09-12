@@ -25,9 +25,9 @@ public struct SwiftyCropConfiguration {
     ///
     ///   - rectAspectRatio: The aspect ratio to use when a `.rectangle` mask shape is used. Defaults to `4:3`.
     public init(
-        maxMagnificationScale: CGFloat = 4.0,
+        maxMagnificationScale: CGFloat = 5.0,
         rotateImage: Bool = false,
-        zoomSensitivity: CGFloat = 3,
+        zoomSensitivity: CGFloat = 6,
         panelBackgroundColor: Color = .gray,
         doneButtonColor: Color = .green,
         cancelButtonColor: Color = .red,
