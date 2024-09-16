@@ -10,7 +10,7 @@ public struct CropView: View {
     private let onComplete: (UIImage?) -> Void
     private let localizableTableName: String
     
-    @State var imageOpacity: Int = 1
+    @State var imageOpacity: Double = 1.0
     
     public init(
         image: UIImage,
