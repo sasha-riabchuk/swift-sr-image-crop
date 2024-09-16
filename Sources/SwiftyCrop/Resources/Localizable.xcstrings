@@ -66,6 +66,9 @@
         }
       }
     },
+    "Choose ratio" : {
+
+    },
     "interaction_instructions" : {
       "extractionState" : "manual",
       "localizations" : {
